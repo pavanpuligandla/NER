@@ -4,7 +4,6 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using Irony.Compiler;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using POSTagger.Taggers;
@@ -13,6 +12,7 @@ using POSTagger.Corpora;
 using OpenNLP.Tools.PosTagger;
 using System.Configuration;
 using OpenNLP.Tools.NameFind;
+using Irony.Compiler;
 
 namespace KeywordMapper
 {
@@ -37,23 +37,28 @@ namespace KeywordMapper
 
         SearchGrammar _grammar;
         LanguageCompiler _compiler;
+        CompilerContext _context;
 
         private void fmConverter_Load(object sender, EventArgs e)
         {
             _grammar = new SearchGrammar();
             _compiler = new LanguageCompiler(_grammar);
-            Irony.StringSet errors = _compiler.Parser.GetErrors();
+            _context = new CompilerContext(_compiler);
+                
             BindSearchTypes();
             cmbSearchDirection.SelectedIndex = 0;
+            Irony.StringSet errors = _compiler.Parser.GetErrors();
             if (errors.Count > 0)
             {
                 FtsQueryTextBox.Text = "SearchGrammar contains errors. Investigate using GrammarExplorer.\r\n" + errors.ToString();
             }
         }
+
         public void BindSearchTypes()
         {
             cmbSearchTypes.DataSource = Enum.GetValues(typeof(SearchGrammar.TermType));
         }
+
         private void timer_Tick(object sender, EventArgs e)
         {
             float cpuUsage = 0.00F;
@@ -70,23 +75,25 @@ namespace KeywordMapper
             ConvertButton.Enabled = false;
             await (Task.Run(() =>
             {
-                try
-                {
-                    System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
-                    watch.Start();
-                    AstNode root = _compiler.Parse(SourceQueryText.Text.ToLower());
-                    if (!CheckParseErrors()) return;
-                    FtsQueryTextBox.Text = SearchGrammar.ConvertQuery(root, SearchGrammar.TermType.Exact);
-                    AllResults = SearchGrammar.ExecuteQuery(FtsQueryTextBox.Text);
-                    watch.Stop();
-                    double elapsedMS = watch.Elapsed.TotalSeconds;
-                    lblCount.Text = AllResults.Rows.Count.ToString() + " Matche(s) found in " + elapsedMS + " seconds";
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(ex.ToString());
-                    FtsQueryTextBox.Text = "Error: " + ex.Message;
-                }
+            try
+            {
+                System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
+                watch.Start();
+                if (!CheckParseErrors()) return;
+
+                AstNode root = _compiler.Parse(SourceQueryText.Text.ToLower());
+                FtsQueryTextBox.Text = SearchGrammar.ConvertQuery(root, SearchGrammar.TermType.Inflectional);
+ 
+                AllResults = SearchGrammar.ExecuteQuery(FtsQueryTextBox.Text);
+                watch.Stop();
+                double elapsedMS = watch.Elapsed.TotalSeconds;
+                lblCount.Text = AllResults.Rows.Count.ToString() + " Matche(s) found in " + elapsedMS + " seconds";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                FtsQueryTextBox.Text = "Error: " + ex.Message;
+            }
             }));
             ConvertButton.Enabled = true;
             grpTextOperations.Enabled = true;
@@ -140,9 +147,9 @@ namespace KeywordMapper
 
         private bool CheckParseErrors()
         {
-            if (_compiler.Context.Errors.Count == 0) return true;
+            if (_context.Errors.Count == 0) return true;
             string errs = "Errors: \r\n";
-            foreach (SyntaxError err in _compiler.Context.Errors)
+            foreach (SyntaxError err in _context.Errors)
                 errs += err.ToString() + "\r\n";
             FtsQueryTextBox.Text = errs;
             return false;

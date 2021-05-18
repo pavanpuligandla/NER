@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Irony.Compiler;
 using System.Data.SqlClient;
 using System.Data;
 using System.Configuration;
+using Irony.Compiler;
 
 namespace KeywordMapper
 {
@@ -111,6 +111,99 @@ namespace KeywordMapper
             Exact = 3
         }
 
+        public static string ConvertQuery(AstNode node)
+        {
+            return ConvertQuery(node, TermType.Inflectional);
+        }
+
+        //public static string ConvertQuery(ParseTreeNode node, TermType type)
+        //{
+        //    string result = "";
+        //    // Note that some NonTerminals don't actually get into the AST tree, 
+        //    // because of some Irony's optimizations - punctuation stripping and 
+        //    // transient nodes elimination. For example, ParenthesizedExpression - parentheses 
+        //    // symbols get stripped off as punctuation, and child expression node 
+        //    // (parenthesized content) replaces the parent ParenthesizedExpression node
+        //    switch (node.Term.Name)
+        //    {
+        //        case "BinaryExpression":
+        //            string opSym = string.Empty;
+        //            string op = node.ChildNodes[1].FindTokenAndGetText().ToLower();
+        //            string sqlOp = "";
+        //            switch (op)
+        //            {
+        //                case "":
+        //                case "&":
+        //                case "and":
+        //                    sqlOp = " AND ";
+        //                    type = TermType.Inflectional;
+        //                    break;
+        //                case "-":
+        //                    sqlOp = " AND NOT ";
+        //                    break;
+        //                case "|":
+        //                case "or":
+        //                    sqlOp = " OR ";
+        //                    break;
+        //            }//switch
+
+        //            result = "(" + ConvertQuery(node.ChildNodes[0], type) + sqlOp + ConvertQuery(node.ChildNodes[2], type) + ")";
+        //            break;
+
+        //        case "PrimaryExpression":
+        //            result = "(" + ConvertQuery(node.ChildNodes[0], type) + ")";
+        //            break;
+
+        //        case "ProximityList":
+        //            string[] tmp = new string[node.ChildNodes.Count];
+        //            type = TermType.Exact;
+        //            for (int i = 0; i < node.ChildNodes.Count; i++)
+        //            {
+        //                tmp[i] = ConvertQuery(node.ChildNodes[i], type);
+        //            }
+        //            result = "(" + string.Join(" NEAR ", tmp) + ")";
+        //            type = TermType.Inflectional;
+        //            break;
+
+        //        case "Phrase":
+        //            result = '"' + node.Token.ValueString + '"';
+        //            break;
+
+        //        case "ThesaurusExpression":
+        //            result = " FORMSOF (THESAURUS, " +
+        //                node.ChildNodes[1].Token.ValueString + ") ";
+        //            break;
+
+        //        case "ExactExpression":
+        //            result = " \"" + node.ChildNodes[1].Token.ValueString + "\" ";
+        //            break;
+
+        //        case "Term":
+        //            switch (type)
+        //            {
+        //                case TermType.Inflectional:
+        //                    result = node.Token.ValueString;
+        //                    if (result.EndsWith("*"))
+        //                        result = "\"" + result + "\"";
+        //                    else
+        //                        result = " FORMSOF (INFLECTIONAL, " + result + ") ";
+        //                    break;
+        //                case TermType.Exact:
+        //                    result = node.Token.ValueString;
+
+        //                    break;
+        //            }
+        //            break;
+
+        //        // This should never happen, even if input string is garbage
+        //        default:
+        //            throw new ApplicationException("Converter failed: unexpected term: " +
+        //                node.Term.Name + ". Please investigate.");
+
+        //    }
+        //    return result;
+        //}
+
         public static string ConvertQuery(AstNode node, TermType type)
         {
             string result = "";
@@ -139,11 +232,11 @@ namespace KeywordMapper
                     else
                     {
                         andop = " AND ";
-                        type = TermType.Exact;
+                        type = TermType.Inflectional;
                     }
                     result = "(" + ConvertQuery(node.ChildNodes[0], type) + andop +
                         ConvertQuery(node.ChildNodes[2], type) + ")";
-                    type = TermType.Exact;
+                    type = TermType.Inflectional;
                     break;
 
                 case "PrimaryExpression":
